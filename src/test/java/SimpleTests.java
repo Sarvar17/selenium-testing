@@ -1,57 +1,59 @@
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SimpleTests {
-    private String url = "https://orlovrs.github.io/time-tracker/";
+public class SimpleTests extends UITest {
+    private final String url = "https://orlovrs.github.io/time-tracker/";
     private WebDriver driver;
-    private int estimation = 15;
-    private String taskName = "Selenium test";
-    private String initialTaskStatus = "waiting";
-
-    @BeforeEach
-    void prepareTest() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/chromedriver.exe");
-        driver = new ChromeDriver();
-        driver.get(url);
-    }
-
-    @AfterEach
-    void clearTest() {
-        driver.quit();
-    }
+    private final int estimation = 15;
+    private final String taskName = "Selenium test";
+    private final String initialTaskStatus = "waiting";
+    private final String taskStatusInProgress = "in progress";
+    private final String taskDate = "09-07-2023";
 
     @Test
     void simpleTest() {
-        driver.findElement(By.id("taskName")).sendKeys(taskName);
-        driver.findElement(By.cssSelector("#estimation")).sendKeys(String.valueOf(estimation));
-        driver.findElement(By.xpath("//button[contains(text(), 'Create Task')]")).click();
+        mainPage.createTask(taskName, estimation);
 
-        assertTrue(driver.findElement(By.cssSelector("div.card")).isDisplayed(),
-                "Card didn't appear");
-        assertEquals(taskName, driver.findElement(By.cssSelector("div.card-header")).getText(),
-                String.format(
-                        "Task name is different from the passed. Actual value: %s",
-                        driver.findElement(By.cssSelector("div.card-header")).getText()
-                )
-        );
-        assertTrue(driver.findElement(By.cssSelector(".card h5")).getText().contains(initialTaskStatus),
-                String.format(
-                        "The status is different from waiting: %s",
-                        driver.findElement(By.cssSelector(".card h5")).getText()
-                )
-        );
-        assertTrue(driver.findElement(By.xpath("//div[contains(@class, 'card-body')]//p[1]"))
-                        .getText().contains(String.valueOf(estimation)),
-                String.format(
-                        "The estimation time is different from %s: %s",
-                        estimation,
-                        driver.findElement(By.xpath("//div[contains(@class, 'card-body')]//p[1]")).getText()
-                ));
+        String actualTaskName = mainPage.getCreatedTaskName();
+        String actualTaskStatus = mainPage.getCreatedTaskStatus();
+        String actualEstimationTime = mainPage.getCreatedTaskEstimationTime();
+
+        assertTrue(mainPage.isTaskCardVisible(), "Card didn't appear");
+        assertEquals(taskName, actualTaskName,
+                String.format("Task name is different from the passed. Actual value: %s",actualTaskName));
+        assertTrue(actualTaskStatus.contains(initialTaskStatus),
+                String.format("The status is different from waiting: %s", actualTaskStatus));
+        assertTrue(actualEstimationTime.contains(String.valueOf(estimation)),
+                String.format("The estimation time is different from %s: %s", estimation, actualEstimationTime));
+    }
+
+    @Test
+    void testCheckAllStatuses() {
+        mainPage.createTask(taskName, estimation);
+        mainPage.startTask();
+
+        String actualTaskStatus = mainPage.getCreatedTaskStatus();
+        assertTrue(actualTaskStatus.contains(taskStatusInProgress),
+                String.format("The status is different from 'in progress'. %s", actualTaskStatus));
+    }
+
+
+    @Test
+    void testDeleteTask() {
+        mainPage.createTask(taskName, estimation);
+        mainPage.createTask(taskName, estimation);
+        mainPage.deleteTask();
+
+        assertTrue(mainPage.onlyOneTaskCardVisible(),
+                "There are still 2 cards. One card supposed to be removed");
+    }
+
+    @Test
+    void testCreateTaskWithDate() {
+        mainPage.createTaskWithDate(taskName, estimation, taskDate);
+
+        assertTrue(mainPage.isTaskCardDateVisible(), "Card didn't appear");
     }
 }
